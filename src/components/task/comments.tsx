@@ -1,0 +1,216 @@
+"use client";
+
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { formatDistanceToNow } from "date-fns";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string | null;
+}
+
+interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: User;
+}
+
+interface CommentsProps {
+  taskId: string;
+  comments: Comment[];
+  onUpdate: () => void;
+}
+
+export function Comments({ taskId, comments, onUpdate }: CommentsProps) {
+  const { data: session } = useSession();
+  const [newComment, setNewComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleSubmit = async () => {
+    if (!newComment.trim()) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newComment, taskId }),
+      });
+
+      if (response.ok) {
+        setNewComment("");
+        onUpdate();
+      }
+    } catch (error) {
+      console.error("Failed to add comment:", error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = async (commentId: string) => {
+    if (!editContent.trim()) return;
+
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editContent }),
+      });
+
+      if (response.ok) {
+        setEditingId(null);
+        setEditContent("");
+        onUpdate();
+      }
+    } catch (error) {
+      console.error("Failed to edit comment:", error);
+    }
+  };
+
+  const handleDelete = async (commentId: string) => {
+    if (!confirm("Delete this comment?")) return;
+
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        onUpdate();
+      }
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-medium">Comments</h3>
+
+      {/* New Comment */}
+      <div className="flex gap-3">
+        <Avatar className="h-8 w-8 flex-shrink-0">
+          <AvatarFallback className="text-xs">
+            {session?.user?.name ? getInitials(session.user.name) : "U"}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 space-y-2">
+          <Textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Write a comment..."
+            rows={2}
+          />
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            disabled={!newComment.trim() || submitting}
+          >
+            {submitting ? "Posting..." : "Post Comment"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Comments List */}
+      <div className="space-y-4">
+        {comments.map((comment) => (
+          <div key={comment.id} className="flex gap-3">
+            <Avatar className="h-8 w-8 flex-shrink-0">
+              <AvatarFallback className="text-xs">
+                {getInitials(comment.author.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">{comment.author.name}</span>
+                <span className="text-xs text-gray-500">
+                  {formatDistanceToNow(new Date(comment.createdAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+              </div>
+
+              {editingId === comment.id ? (
+                <div className="mt-2 space-y-2">
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => handleEdit(comment.id)}>
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditContent("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 whitespace-pre-wrap">
+                    {comment.content}
+                  </p>
+                  {session?.user?.id === comment.author.id && (
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs text-gray-500"
+                        onClick={() => {
+                          setEditingId(comment.id);
+                          setEditContent(comment.content);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs text-gray-500 hover:text-red-500"
+                        onClick={() => handleDelete(comment.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {comments.length === 0 && (
+          <p className="text-sm text-gray-500 text-center py-4">
+            No comments yet. Be the first to comment!
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
