@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { getProjects, DemoProject } from "@/lib/demo-store";
 
 interface Project {
   id: string;
@@ -14,11 +15,7 @@ interface Project {
   owner: {
     name: string;
   };
-  columns: {
-    _count: {
-      tasks: number;
-    };
-  }[];
+  taskCount: number;
 }
 
 export default function DashboardPage() {
@@ -29,13 +26,19 @@ export default function DashboardPage() {
     fetchProjects();
   }, []);
 
-  const fetchProjects = async () => {
+  const fetchProjects = () => {
     try {
-      const response = await fetch("/api/projects");
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(data);
-      }
+      const allProjects = getProjects();
+      const mapped = allProjects.map((p: DemoProject) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        type: p.type,
+        createdAt: p.createdAt,
+        owner: p.owner,
+        taskCount: p.columns.reduce((sum, col) => sum + col.tasks.length, 0),
+      }));
+      setProjects(mapped);
     } catch (error) {
       console.error("Failed to fetch projects:", error);
     } finally {
@@ -57,7 +60,7 @@ export default function DashboardPage() {
   };
 
   const getTotalTasks = (project: Project) => {
-    return project.columns.reduce((sum, col) => sum + col._count.tasks, 0);
+    return project.taskCount;
   };
 
   if (loading) {

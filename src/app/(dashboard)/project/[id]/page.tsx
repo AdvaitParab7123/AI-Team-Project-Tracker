@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { isToday, isThisWeek, isBefore, startOfDay } from "date-fns";
+import { getProject, createTask, moveTask, getDemoData, saveDemoData } from "@/lib/demo-store";
 
 interface Task {
   id: string;
@@ -28,7 +29,7 @@ interface Task {
     id: string;
     name: string;
     email: string;
-    avatar: string | null;
+    avatar?: string | null;
   } | null;
   checklists: {
     items: {
@@ -42,6 +43,7 @@ interface Task {
       color: string;
     };
   }[];
+  comments: unknown[];
   _count: {
     comments: number;
     attachments: number;
@@ -83,12 +85,31 @@ export default function ProjectPage() {
     dueDate: null,
   });
 
-  const fetchProject = useCallback(async () => {
+  const fetchProject = useCallback(() => {
     try {
-      const response = await fetch(`/api/projects/${projectId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setProject(data);
+      const projectData = getProject(projectId);
+      if (projectData) {
+        // Get labels for this project
+        const data = getDemoData();
+        const projectLabels = data.labels.filter(l => l.projectId === projectId);
+        
+        // Transform columns to add _count to tasks
+        const columnsWithCount = projectData.columns.map(column => ({
+          ...column,
+          tasks: column.tasks.map(task => ({
+            ...task,
+            _count: {
+              comments: task.comments?.length || 0,
+              attachments: 0, // Not supported in demo mode
+            },
+          })),
+        }));
+        
+        setProject({
+          ...projectData,
+          columns: columnsWithCount,
+          labels: projectLabels,
+        });
       }
     } catch (error) {
       console.error("Failed to fetch project:", error);
@@ -101,23 +122,16 @@ export default function ProjectPage() {
     fetchProject();
   }, [fetchProject]);
 
-  const handleAddTask = async (columnId: string, title: string) => {
+  const handleAddTask = (columnId: string, title: string) => {
     try {
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, columnId }),
-      });
-
-      if (response.ok) {
-        fetchProject();
-      }
+      createTask(columnId, title);
+      fetchProject();
     } catch (error) {
       console.error("Failed to add task:", error);
     }
   };
 
-  const handleTaskMove = async (result: DropResult) => {
+  const handleTaskMove = (result: DropResult) => {
     if (!result.destination || !project) return;
 
     const { source, destination, draggableId } = result;
@@ -130,55 +144,11 @@ export default function ProjectPage() {
       return;
     }
 
-    // Optimistic update
-    const newColumns = [...project.columns];
-    const sourceColumn = newColumns.find((c) => c.id === source.droppableId);
-    const destColumn = newColumns.find((c) => c.id === destination.droppableId);
-
-    if (!sourceColumn || !destColumn) return;
-
-    const [movedTask] = sourceColumn.tasks.splice(source.index, 1);
-    destColumn.tasks.splice(destination.index, 0, movedTask);
-
-    // Update positions
-    sourceColumn.tasks.forEach((task, index) => {
-      task.position = index;
-    });
-    destColumn.tasks.forEach((task, index) => {
-      task.position = index;
-    });
-
-    setProject({ ...project, columns: newColumns });
-
-    // Prepare tasks for API update
-    const tasksToUpdate = [
-      ...sourceColumn.tasks.map((t, i) => ({
-        id: t.id,
-        columnId: sourceColumn.id,
-        position: i,
-      })),
-    ];
-
-    if (source.droppableId !== destination.droppableId) {
-      tasksToUpdate.push(
-        ...destColumn.tasks.map((t, i) => ({
-          id: t.id,
-          columnId: destColumn.id,
-          position: i,
-        }))
-      );
-    }
-
-    try {
-      await fetch("/api/tasks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasks: tasksToUpdate }),
-      });
-    } catch (error) {
-      console.error("Failed to update task positions:", error);
-      fetchProject(); // Revert on error
-    }
+    // Use demo store to move task
+    moveTask(draggableId, destination.droppableId, destination.index);
+    
+    // Refresh the project data
+    fetchProject();
   };
 
   const getTypeLabel = (type: string) => {

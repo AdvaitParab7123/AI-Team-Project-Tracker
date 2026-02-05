@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { createProject, DEMO_USER, resetDemoData } from "@/lib/demo-store";
 
 interface Project {
   id: string;
@@ -48,7 +48,6 @@ interface SidebarProps {
 
 export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
   const pathname = usePathname();
-  const { data: session } = useSession();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     name: "",
@@ -62,22 +61,21 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
     setCreating(true);
 
     try {
-      const response = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newProject),
-      });
-
-      if (response.ok) {
-        setNewProject({ name: "", description: "", type: "general" });
-        setIsCreateOpen(false);
-        onProjectCreated?.();
-      }
+      createProject(newProject.name, newProject.description || null, newProject.type);
+      setNewProject({ name: "", description: "", type: "general" });
+      setIsCreateOpen(false);
+      onProjectCreated?.();
     } catch (error) {
       console.error("Failed to create project:", error);
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleResetDemo = () => {
+    resetDemoData();
+    onProjectCreated?.();
+    window.location.reload();
   };
 
   const getInitials = (name: string) => {
@@ -277,26 +275,26 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
             >
               <Avatar className="h-8 w-8 mr-2">
                 <AvatarFallback className="bg-gray-700 text-white text-xs">
-                  {session?.user?.name ? getInitials(session.user.name) : "U"}
+                  {getInitials(DEMO_USER.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium truncate">
-                  {session?.user?.name || "User"}
+                  {DEMO_USER.name}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
-                  {session?.user?.email}
+                  {DEMO_USER.email}
                 </p>
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem disabled>
-              Role: {session?.user?.role || "member"}
+              Role: {DEMO_USER.role}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
-              Sign Out
+            <DropdownMenuItem onClick={handleResetDemo}>
+              Reset Demo Data
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

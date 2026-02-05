@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -33,13 +32,13 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Checklist } from "./checklist";
 import { Comments } from "./comments";
-import { Attachments } from "./attachments";
+import { getTask, updateTask, deleteTask, getUsers, DEMO_USER } from "@/lib/demo-store";
 
 interface User {
   id: string;
   name: string;
   email: string;
-  avatar: string | null;
+  avatar?: string | null;
 }
 
 interface ChecklistItem {
@@ -63,15 +62,6 @@ interface Comment {
   author: User;
 }
 
-interface Attachment {
-  id: string;
-  filename: string;
-  filepath: string;
-  mimetype: string;
-  size: number;
-  uploadedAt: string;
-}
-
 interface LabelData {
   id: string;
   name: string;
@@ -87,13 +77,7 @@ interface TaskData {
   assignee: User | null;
   checklists: ChecklistData[];
   comments: Comment[];
-  attachments: Attachment[];
   taskLabels: { label: LabelData }[];
-  column: {
-    project: {
-      labels: LabelData[];
-    };
-  };
 }
 
 interface TaskModalProps {
@@ -116,17 +100,16 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
 
-  const fetchTask = useCallback(async () => {
+  const fetchTask = useCallback(() => {
     try {
-      const response = await fetch(`/api/tasks/${taskId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTask(data);
-        setTitle(data.title);
-        setDescription(data.description || "");
-        setPriority(data.priority);
-        setDueDate(data.dueDate ? new Date(data.dueDate) : undefined);
-        setAssigneeId(data.assignee?.id || null);
+      const taskData = getTask(taskId);
+      if (taskData) {
+        setTask(taskData as TaskData);
+        setTitle(taskData.title);
+        setDescription(taskData.description || "");
+        setPriority(taskData.priority);
+        setDueDate(taskData.dueDate ? new Date(taskData.dueDate) : undefined);
+        setAssigneeId(taskData.assignee?.id || null);
       }
     } catch (error) {
       console.error("Failed to fetch task:", error);
@@ -135,16 +118,9 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
     }
   }, [taskId]);
 
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch("/api/users");
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-    }
+  const fetchUsers = () => {
+    const allUsers = getUsers();
+    setUsers(allUsers);
   };
 
   useEffect(() => {
@@ -152,25 +128,20 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
     fetchUsers();
   }, [fetchTask]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          description: description || null,
-          priority,
-          dueDate: dueDate?.toISOString() || null,
-          assigneeId,
-        }),
+      const assignee = assigneeId ? getUsers().find(u => u.id === assigneeId) : null;
+      updateTask(taskId, {
+        title,
+        description: description || null,
+        priority,
+        dueDate: dueDate?.toISOString() || null,
+        assigneeId,
+        assignee: assignee || null,
       });
-
-      if (response.ok) {
-        fetchTask();
-        onUpdate();
-      }
+      fetchTask();
+      onUpdate();
     } catch (error) {
       console.error("Failed to save task:", error);
     } finally {
@@ -178,18 +149,13 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!confirm("Are you sure you want to delete this task?")) return;
 
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        onClose();
-        onUpdate();
-      }
+      deleteTask(taskId);
+      onClose();
+      onUpdate();
     } catch (error) {
       console.error("Failed to delete task:", error);
     }
@@ -414,15 +380,6 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
               <Checklist
                 taskId={taskId}
                 checklists={task.checklists}
-                onUpdate={fetchTask}
-              />
-
-              <Separator />
-
-              {/* Attachments */}
-              <Attachments
-                taskId={taskId}
-                attachments={task.attachments}
                 onUpdate={fetchTask}
               />
 
