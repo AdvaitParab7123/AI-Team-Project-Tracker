@@ -29,7 +29,7 @@ interface Task {
     id: string;
     name: string;
     email: string;
-    avatar?: string | null;
+    avatar: string | null;
   } | null;
   checklists: {
     items: {
@@ -93,11 +93,15 @@ export default function ProjectPage() {
         const data = getDemoData();
         const projectLabels = data.labels.filter(l => l.projectId === projectId);
         
-        // Transform columns to add _count to tasks
+        // Transform columns to add _count to tasks and fix types
         const columnsWithCount = projectData.columns.map(column => ({
           ...column,
           tasks: column.tasks.map(task => ({
             ...task,
+            assignee: task.assignee ? {
+              ...task.assignee,
+              avatar: task.assignee.avatar ?? null,
+            } : null,
             _count: {
               comments: task.comments?.length || 0,
               attachments: 0, // Not supported in demo mode

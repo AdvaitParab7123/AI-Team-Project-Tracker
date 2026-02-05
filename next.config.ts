@@ -11,9 +11,7 @@ const nextConfig: NextConfig = {
     ],
   },
   // Ensure Prisma works correctly in serverless environment
-  experimental: {
-    serverComponentsExternalPackages: ["@prisma/client"],
-  },
+  serverExternalPackages: ["@prisma/client"],
 };
 
 export default nextConfig;
