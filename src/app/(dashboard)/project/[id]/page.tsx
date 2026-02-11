@@ -9,12 +9,25 @@ import { Filters, FilterState } from "@/components/board/filters";
 import { TaskModal } from "@/components/task/task-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { isToday, isThisWeek, isBefore, startOfDay } from "date-fns";
 import { toast } from "sonner";
 
@@ -87,6 +100,9 @@ export default function ProjectPage() {
     assigneeId: null,
     dueDate: null,
   });
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickTaskTitle, setQuickTaskTitle] = useState("");
+  const [quickTaskColumnId, setQuickTaskColumnId] = useState<string>("");
 
   const fetchProject = useCallback(async () => {
     try {
@@ -125,6 +141,14 @@ export default function ProjectPage() {
     } catch (error) {
       console.error("Failed to add task:", error);
     }
+  };
+
+  const handleQuickAddTask = async () => {
+    const columnId = quickTaskColumnId || project?.columns.find(c => c.name === "To Do")?.id || project?.columns[0]?.id;
+    if (!quickTaskTitle.trim() || !columnId) return;
+    await handleAddTask(columnId, quickTaskTitle.trim());
+    setQuickTaskTitle("");
+    setQuickAddOpen(false);
   };
 
   const handleTaskMove = (result: DropResult) => {
@@ -320,6 +344,75 @@ export default function ProjectPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Popover open={quickAddOpen} onOpenChange={setQuickAddOpen}>
+              <PopoverTrigger asChild>
+                <Button size="sm" title="Quickly add a new task">
+                  <svg
+                    className="w-4 h-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Add Task
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm">Quick Add Task</h4>
+                  <Input
+                    placeholder="Task title..."
+                    value={quickTaskTitle}
+                    onChange={(e) => setQuickTaskTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleQuickAddTask();
+                      if (e.key === "Escape") setQuickAddOpen(false);
+                    }}
+                    autoFocus
+                  />
+                  <Select
+                    value={quickTaskColumnId || project.columns.find(c => c.name === "To Do")?.id || project.columns[0]?.id || ""}
+                    onValueChange={setQuickTaskColumnId}
+                  >
+                    <SelectTrigger className="h-9" title="Choose which column to add the task to">
+                      <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {project.columns.map((col) => (
+                        <SelectItem key={col.id} value={col.id}>
+                          {col.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setQuickAddOpen(false);
+                        setQuickTaskTitle("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleQuickAddTask}
+                      disabled={!quickTaskTitle.trim()}
+                    >
+                      Add Task
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" title="Switch between board and list views">
