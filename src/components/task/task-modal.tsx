@@ -315,7 +315,7 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
 
                 {/* Priority */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500">Priority</Label>
+                  <Label className="text-xs text-gray-500" title="Task urgency level">Priority</Label>
                   <Select
                     value={priority}
                     onValueChange={(value) => {
@@ -351,7 +351,7 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
 
                 {/* Due Date */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500">Due Date</Label>
+                  <Label className="text-xs text-gray-500" title="When this task should be completed">Due Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -461,10 +461,11 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
                   variant="destructive"
                   size="sm"
                   onClick={handleDelete}
+                  title="Permanently delete this task"
                 >
                   Delete Task
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={saving}>
+                <Button size="sm" onClick={handleSave} disabled={saving} title="Save all changes">
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>

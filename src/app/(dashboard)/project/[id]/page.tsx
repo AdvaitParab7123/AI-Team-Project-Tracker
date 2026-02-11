@@ -322,7 +322,7 @@ export default function ProjectPage() {
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" title="Switch between board and list views">
                   {viewMode === "kanban" ? "Board" : "List"} View
                 </Button>
               </DropdownMenuTrigger>

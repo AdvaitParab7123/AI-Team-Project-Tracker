@@ -99,6 +99,7 @@ export function Filters({ filters, onFiltersChange }: FiltersProps) {
         </svg>
         <Input
           placeholder="Search tasks..."
+          title="Search tasks by title or description"
           value={filters.search}
           onChange={(e) =>
             onFiltersChange({ ...filters, search: e.target.value })
@@ -117,7 +118,7 @@ export function Filters({ filters, onFiltersChange }: FiltersProps) {
           })
         }
       >
-        <SelectTrigger className="w-32">
+        <SelectTrigger className="w-32" title="Filter tasks by priority level">
           <SelectValue placeholder="Priority" />
         </SelectTrigger>
         <SelectContent>
@@ -153,7 +154,7 @@ export function Filters({ filters, onFiltersChange }: FiltersProps) {
           })
         }
       >
-        <SelectTrigger className="w-40">
+        <SelectTrigger className="w-40" title="Filter tasks by assigned team member">
           <SelectValue placeholder="Assignee" />
         </SelectTrigger>
         <SelectContent>
@@ -177,7 +178,7 @@ export function Filters({ filters, onFiltersChange }: FiltersProps) {
       {/* Due Date Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" title="Filter tasks by due date">
             <svg
               className="w-4 h-4 mr-1"
               fill="none"
@@ -259,7 +260,7 @@ export function Filters({ filters, onFiltersChange }: FiltersProps) {
 
       {/* Clear Filters */}
       {(filters.search || activeFilterCount > 0) && (
-        <Button variant="ghost" size="sm" onClick={clearFilters}>
+        <Button variant="ghost" size="sm" onClick={clearFilters} title="Remove all active filters">
           Clear
           {activeFilterCount > 0 && (
             <Badge variant="secondary" className="ml-1">

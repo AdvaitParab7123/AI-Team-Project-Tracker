@@ -144,8 +144,8 @@ export function Comments({ taskId, comments, onUpdate }: CommentsProps) {
         ))}
 
         {comments.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
-            No comments yet. Be the first to comment!
+          <p className="text-sm text-gray-400 text-center py-4">
+            Discuss this task with your team. Add a comment above to get started.
           </p>
         )}
       </div>

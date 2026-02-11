@@ -125,7 +125,7 @@ export function ListView({ columns, onTaskClick }: ListViewProps) {
   if (allTasks.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
-        No tasks yet. Add tasks using the Kanban board view.
+        No tasks yet. Switch to Board view and click a column to add tasks.
       </div>
     );
   }

@@ -157,6 +157,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
                         "text-xs",
                         isOverdue ? "text-red-500 font-medium" : "text-gray-500"
                       )}
+                      title={`Due ${new Date(task.dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`}
                     >
                       {new Date(task.dueDate).toLocaleDateString("en-US", {
                         month: "short",
@@ -174,6 +175,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
                           ? "text-green-600"
                           : "text-gray-500"
                       )}
+                      title={`Checklist: ${completedChecklistItems} of ${totalChecklistItems} items completed`}
                     >
                       <svg
                         className="w-3 h-3"
@@ -231,7 +233,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
 
                   {/* Comments */}
                   {task._count.comments > 0 && (
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <span className="text-xs text-gray-500 flex items-center gap-1" title={`${task._count.comments} comment${task._count.comments !== 1 ? "s" : ""}`}>
                       <svg
                         className="w-3 h-3"
                         fill="none"
@@ -251,7 +253,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
 
                   {/* Attachments */}
                   {task._count.attachments > 0 && (
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <span className="text-xs text-gray-500 flex items-center gap-1" title={`${task._count.attachments} attachment${task._count.attachments !== 1 ? "s" : ""}`}>
                       <svg
                         className="w-3 h-3"
                         fill="none"
@@ -272,7 +274,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
 
                 {/* Assignee */}
                 {task.assignee && (
-                  <Avatar className="h-6 w-6">
+                  <Avatar className="h-6 w-6" title={task.assignee.name}>
                     <AvatarFallback className="text-xs bg-gray-200 dark:bg-gray-700">
                       {getInitials(task.assignee.name)}
                     </AvatarFallback>

@@ -136,7 +136,7 @@ export function KanbanBoard({
                     <span className={cn(
                       "text-2xl font-bold",
                       colors.text
-                    )}>
+                    )} title={`${column.tasks.length} tasks in this column`}>
                       {column.tasks.length}
                     </span>
                   </div>
@@ -158,11 +158,11 @@ export function KanbanBoard({
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-400 italic">No tasks</p>
+                      <p className="text-sm text-gray-400 italic">Click to expand and add your first task</p>
                     )}
                   </div>
                   <div className="mt-4 text-xs text-gray-500">
-                    Click to expand
+                    Click to expand and manage tasks
                   </div>
                 </div>
               );
@@ -193,7 +193,7 @@ export function KanbanBoard({
                     <span className={cn(
                       "text-2xl font-bold",
                       colors.text
-                    )}>
+                    )} title={`${column.tasks.length} tasks in this column`}>
                       {column.tasks.length}
                     </span>
                   </div>
@@ -215,11 +215,11 @@ export function KanbanBoard({
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-400 italic">No tasks</p>
+                      <p className="text-sm text-gray-400 italic">Click to expand and add your first task</p>
                     )}
                   </div>
                   <div className="mt-4 text-xs text-gray-500">
-                    Click to expand
+                    Click to expand and manage tasks
                   </div>
                 </div>
               );
@@ -263,6 +263,7 @@ export function KanbanBoard({
                     size="icon"
                     onClick={closeExpanded}
                     className="rounded-full"
+                    title="Close this column"
                   >
                     <X className="h-5 w-5" />
                   </Button>
@@ -332,6 +333,7 @@ export function KanbanBoard({
                       variant="outline"
                       className="w-full"
                       onClick={() => setIsAdding(true)}
+                      title="Add a new task to this column"
                     >
                       <svg
                         className="w-4 h-4 mr-2"

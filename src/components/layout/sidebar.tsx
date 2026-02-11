@@ -14,27 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CreateProjectDialog } from "@/components/shared/create-project-dialog";
 import { useSession, signOut } from "next-auth/react";
-import { toast } from "sonner";
 
 interface Project {
   id: string;
@@ -51,40 +32,6 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newProject, setNewProject] = useState({
-    name: "",
-    description: "",
-    type: "general",
-  });
-  const [creating, setCreating] = useState(false);
-
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreating(true);
-
-    try {
-      const response = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newProject.name,
-          description: newProject.description || null,
-          type: newProject.type,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to create project");
-      }
-      setNewProject({ name: "", description: "", type: "general" });
-      setIsCreateOpen(false);
-      onProjectCreated?.();
-      toast("Project created");
-    } catch (error) {
-      console.error("Failed to create project:", error);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const getInitials = (name: string) => {
     return name
@@ -121,7 +68,7 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
         <div className="space-y-6">
           {/* Main Navigation */}
           <div>
-            <Link href="/">
+            <Link href="/" title="Go to dashboard overview">
               <Button
                 variant="ghost"
                 className={cn(
@@ -153,98 +100,42 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
               <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Projects
               </h2>
-              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <form onSubmit={handleCreateProject}>
-                    <DialogHeader>
-                      <DialogTitle>Create New Project</DialogTitle>
-                      <DialogDescription>
-                        Add a new project to track tasks and progress.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Project Name</Label>
-                        <Input
-                          id="name"
-                          value={newProject.name}
-                          onChange={(e) =>
-                            setNewProject({ ...newProject, name: e.target.value })
-                          }
-                          placeholder="My New Project"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                          id="description"
-                          value={newProject.description}
-                          onChange={(e) =>
-                            setNewProject({
-                              ...newProject,
-                              description: e.target.value,
-                            })
-                          }
-                          placeholder="Brief description of the project..."
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="type">Project Type</Label>
-                        <Select
-                          value={newProject.type}
-                          onValueChange={(value) =>
-                            setNewProject({ ...newProject, type: value })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="general">General</SelectItem>
-                            <SelectItem value="client">Client Project</SelectItem>
-                            <SelectItem value="internal">Internal Product</SelectItem>
-                            <SelectItem value="feature_request">
-                              Feature Request
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" disabled={creating}>
-                        {creating ? "Creating..." : "Create Project"}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                onClick={() => setIsCreateOpen(true)}
+                title="Create a new project"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+              </Button>
             </div>
+
+            <CreateProjectDialog
+              open={isCreateOpen}
+              onOpenChange={setIsCreateOpen}
+              onProjectCreated={onProjectCreated}
+            />
 
             <div className="space-y-1">
               {projects.map((project) => (
-                <Link key={project.id} href={`/project/${project.id}`}>
+                <Link
+                  key={project.id}
+                  href={`/project/${project.id}`}
+                  title={`Open ${project.name}`}
+                >
                   <Button
                     variant="ghost"
                     className={cn(
@@ -280,6 +171,7 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
             <Button
               variant="ghost"
               className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
+              title="Account settings and sign out"
             >
               <Avatar className="h-8 w-8 mr-2">
                 <AvatarFallback className="bg-gray-700 text-white text-xs">

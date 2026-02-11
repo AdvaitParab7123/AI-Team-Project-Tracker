@@ -130,6 +130,7 @@ export function Checklist({ taskId, checklists, onUpdate }: ChecklistProps) {
           variant="ghost"
           size="sm"
           onClick={() => setIsAddingChecklist(true)}
+          title="Add a checklist to break this task into steps"
         >
           <svg
             className="w-4 h-4 mr-1"
@@ -179,6 +180,12 @@ export function Checklist({ taskId, checklists, onUpdate }: ChecklistProps) {
             </Button>
           </div>
         </div>
+      )}
+
+      {checklists.length === 0 && !isAddingChecklist && (
+        <p className="text-sm text-gray-400 text-center py-3">
+          Break this task into smaller steps by adding a checklist.
+        </p>
       )}
 
       {checklists.map((checklist) => {
