@@ -157,12 +157,11 @@ export default function ProjectPage() {
         if (!movedTask) return col;
         tasks.splice(destination.index, 0, {
           ...movedTask,
-          columnId: col.id,
           position: destination.index,
         });
         return {
           ...col,
-          tasks: tasks.map((t, i) => ({ ...t, position: i, columnId: col.id })),
+          tasks: tasks.map((t, i) => ({ ...t, position: i })),
         };
       }
       return col;
