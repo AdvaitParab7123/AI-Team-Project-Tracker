@@ -52,6 +52,11 @@ export async function GET(
                     label: true,
                   },
                 },
+                timeEntries: {
+                  select: {
+                    hours: true,
+                  },
+                },
                 _count: {
                   select: {
                     comments: true,

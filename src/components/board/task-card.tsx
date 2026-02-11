@@ -20,6 +20,7 @@ interface Task {
   description: string | null;
   priority: string;
   dueDate: string | null;
+  estimatedHours: number | null;
   assignee: {
     id: string;
     name: string;
@@ -32,6 +33,9 @@ interface Task {
     }[];
   }[];
   taskLabels: TaskLabel[];
+  timeEntries: {
+    hours: number;
+  }[];
   _count: {
     comments: number;
     attachments: number;
@@ -75,6 +79,23 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
     (sum, cl) => sum + cl.items.filter((item) => item.completed).length,
     0
   );
+
+  const totalLoggedHours = task.timeEntries?.reduce(
+    (sum, entry) => sum + entry.hours,
+    0
+  ) || 0;
+  const hasTimeData = totalLoggedHours > 0 || task.estimatedHours;
+  const isOverEstimate =
+    task.estimatedHours && totalLoggedHours > task.estimatedHours;
+
+  const formatHours = (h: number) => {
+    if (h >= 1) {
+      const whole = Math.floor(h);
+      const minutes = Math.round((h - whole) * 60);
+      return minutes > 0 ? `${whole}h${minutes}m` : `${whole}h`;
+    }
+    return `${Math.round(h * 60)}m`;
+  };
 
   const isOverdue =
     task.dueDate && new Date(task.dueDate) < new Date() && task.priority !== "low";
@@ -168,6 +189,43 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
                         />
                       </svg>
                       {completedChecklistItems}/{totalChecklistItems}
+                    </span>
+                  )}
+
+                  {/* Time Tracking */}
+                  {hasTimeData && (
+                    <span
+                      className={cn(
+                        "text-xs flex items-center gap-1",
+                        isOverEstimate
+                          ? "text-red-500 font-medium"
+                          : totalLoggedHours > 0
+                          ? "text-blue-500"
+                          : "text-gray-500"
+                      )}
+                      title={
+                        task.estimatedHours
+                          ? `${formatHours(totalLoggedHours)} logged / ${formatHours(task.estimatedHours)} estimated`
+                          : `${formatHours(totalLoggedHours)} logged`
+                      }
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      {formatHours(totalLoggedHours)}
+                      {task.estimatedHours
+                        ? `/${formatHours(task.estimatedHours)}`
+                        : ""}
                     </span>
                   )}
 

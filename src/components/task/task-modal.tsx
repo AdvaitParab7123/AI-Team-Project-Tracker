@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Checklist } from "./checklist";
 import { Comments } from "./comments";
+import { TimeTracking } from "./time-tracking";
 import { toast } from "sonner";
 
 interface User {
@@ -68,17 +69,27 @@ interface LabelData {
   color: string;
 }
 
+interface TimeEntryData {
+  id: string;
+  hours: number;
+  description: string | null;
+  date: string;
+  user: User;
+}
+
 interface TaskData {
   id: string;
   title: string;
   description: string | null;
   priority: string;
   dueDate: string | null;
+  estimatedHours: number | null;
   assignee: User | null;
   checklists: ChecklistData[];
   comments: Comment[];
   taskLabels: { label: LabelData }[];
   attachments: unknown[];
+  timeEntries: TimeEntryData[];
   column: { project: { labels: LabelData[] } };
 }
 
@@ -101,6 +112,7 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
   const [priority, setPriority] = useState("medium");
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
+  const [estimatedHours, setEstimatedHours] = useState<string>("");
 
   const fetchTask = useCallback(async () => {
     try {
@@ -116,6 +128,7 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
       setPriority(taskData.priority);
       setDueDate(taskData.dueDate ? new Date(taskData.dueDate) : undefined);
       setAssigneeId(taskData.assignee?.id || null);
+      setEstimatedHours(taskData.estimatedHours ? String(taskData.estimatedHours) : "");
     } catch (error) {
       console.error("Failed to fetch task:", error);
     } finally {
@@ -152,6 +165,7 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
           priority,
           dueDate: dueDate?.toISOString() || null,
           assigneeId,
+          estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
         }),
       });
       if (res.ok) {
@@ -252,7 +266,7 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Assignee */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500">Assignee</Label>
+                  <Label className="text-xs text-gray-500" title="Person responsible for this task">Assignee</Label>
                   <Select
                     value={assigneeId || "unassigned"}
                     onValueChange={(value) => {
@@ -378,6 +392,23 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
                     </PopoverContent>
                   </Popover>
                 </div>
+
+                {/* Estimated Hours */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500" title="How many hours you expect this task to take">
+                    Estimate (hrs)
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    placeholder="e.g. 4"
+                    value={estimatedHours}
+                    onChange={(e) => setEstimatedHours(e.target.value)}
+                    onBlur={handleSave}
+                    className="h-9"
+                  />
+                </div>
               </div>
 
               <Separator />
@@ -400,6 +431,16 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
               <Checklist
                 taskId={taskId}
                 checklists={task.checklists}
+                onUpdate={fetchTask}
+              />
+
+              <Separator />
+
+              {/* Time Tracking */}
+              <TimeTracking
+                taskId={taskId}
+                estimatedHours={task.estimatedHours}
+                timeEntries={task.timeEntries}
                 onUpdate={fetchTask}
               />
 

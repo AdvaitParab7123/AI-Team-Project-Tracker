@@ -28,6 +28,7 @@ model User {
   watchedTasks  TaskWatcher[]  @relation("WatchedTasks")
   comments      Comment[]
   activities    Activity[]
+  timeEntries   TimeEntry[]    @relation("TimeEntries")
 }
 
 model Project {
@@ -60,14 +61,15 @@ model Column {
 }
 
 model Task {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  position    Int
-  priority    String    @default("medium") // "low", "medium", "high"
-  dueDate     DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  position       Int
+  priority       String    @default("medium") // "low", "medium", "high"
+  dueDate        DateTime?
+  estimatedHours Float?    // Estimated hours to complete
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Relations
   columnId    String
@@ -80,6 +82,7 @@ model Task {
   taskLabels     TaskLabel[]
   taskAssignees  TaskAssignee[]
   taskWatchers   TaskWatcher[]
+  timeEntries    TimeEntry[]
 }
 
 model Checklist {
@@ -189,4 +192,19 @@ model TaskWatcher {
   user   User   @relation("WatchedTasks", fields: [userId], references: [id])
 
   @@unique([taskId, userId])
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  hours       Float    // Hours logged
+  description String?  // What was worked on
+  date        DateTime @default(now()) // Date of the work
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  taskId String
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User @relation("TimeEntries", fields: [userId], references: [id])
 }

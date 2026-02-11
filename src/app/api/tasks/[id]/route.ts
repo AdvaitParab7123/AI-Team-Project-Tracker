@@ -64,6 +64,19 @@ export async function GET(
             label: true,
           },
         },
+        timeEntries: {
+          orderBy: { date: "desc" },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -94,7 +107,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { title, description, priority, dueDate, assigneeId, columnId, position } =
+    const { title, description, priority, dueDate, assigneeId, columnId, position, estimatedHours } =
       body;
 
     const task = await prisma.task.update({
@@ -109,6 +122,9 @@ export async function PUT(
         ...(assigneeId !== undefined && { assigneeId }),
         ...(columnId !== undefined && { columnId }),
         ...(position !== undefined && { position }),
+        ...(estimatedHours !== undefined && {
+          estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
+        }),
       },
       include: {
         assignee: {

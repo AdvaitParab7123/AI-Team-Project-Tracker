@@ -25,6 +25,7 @@ interface Task {
   priority: string;
   position: number;
   dueDate: string | null;
+  estimatedHours: number | null;
   assignee: {
     id: string;
     name: string;
@@ -42,6 +43,9 @@ interface Task {
       name: string;
       color: string;
     };
+  }[];
+  timeEntries: {
+    hours: number;
   }[];
   _count: {
     comments: number;

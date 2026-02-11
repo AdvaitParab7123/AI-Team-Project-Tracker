@@ -12,7 +12,7 @@ async function main() {
   // Upsert team members (won't duplicate if run multiple times)
   const advait = await prisma.user.upsert({
     where: { email: "advait.parab@netcorecloud.com" },
-    update: {},
+    update: { password: defaultPassword },
     create: {
       name: "Advait Parab",
       email: "advait.parab@netcorecloud.com",
@@ -23,7 +23,7 @@ async function main() {
 
   const ganesh = await prisma.user.upsert({
     where: { email: "ganesh.rai@netcorecloud.com" },
-    update: {},
+    update: { password: defaultPassword },
     create: {
       name: "Ganesh Rai",
       email: "ganesh.rai@netcorecloud.com",
@@ -34,7 +34,7 @@ async function main() {
 
   const tanishq = await prisma.user.upsert({
     where: { email: "tanishq.juneja@netcorecloud.com" },
-    update: {},
+    update: { password: defaultPassword },
     create: {
       name: "Tanishq Juneja",
       email: "tanishq.juneja@netcorecloud.com",
