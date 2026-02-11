@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { isToday, isThisWeek, isBefore, startOfDay } from "date-fns";
-import { getProject, createTask, moveTask, getDemoData, saveDemoData } from "@/lib/demo-store";
+import { toast } from "sonner";
 
 interface Task {
   id: string;
@@ -43,7 +43,6 @@ interface Task {
       color: string;
     };
   }[];
-  comments: unknown[];
   _count: {
     comments: number;
     attachments: number;
@@ -85,38 +84,21 @@ export default function ProjectPage() {
     dueDate: null,
   });
 
-  const fetchProject = useCallback(() => {
+  const fetchProject = useCallback(async () => {
     try {
-      const projectData = getProject(projectId);
-      if (projectData) {
-        // Get labels for this project
-        const data = getDemoData();
-        const projectLabels = data.labels.filter(l => l.projectId === projectId);
-        
-        // Transform columns to add _count to tasks and fix types
-        const columnsWithCount = projectData.columns.map(column => ({
-          ...column,
-          tasks: column.tasks.map(task => ({
-            ...task,
-            assignee: task.assignee ? {
-              ...task.assignee,
-              avatar: task.assignee.avatar ?? null,
-            } : null,
-            _count: {
-              comments: task.comments?.length || 0,
-              attachments: 0, // Not supported in demo mode
-            },
-          })),
-        }));
-        
-        setProject({
-          ...projectData,
-          columns: columnsWithCount,
-          labels: projectLabels,
-        });
+      const res = await fetch(`/api/projects/${projectId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          setProject(null);
+          return;
+        }
+        throw new Error("Failed to fetch project");
       }
+      const projectData = await res.json();
+      setProject(projectData);
     } catch (error) {
       console.error("Failed to fetch project:", error);
+      setProject(null);
     } finally {
       setLoading(false);
     }
@@ -126,10 +108,16 @@ export default function ProjectPage() {
     fetchProject();
   }, [fetchProject]);
 
-  const handleAddTask = (columnId: string, title: string) => {
+  const handleAddTask = async (columnId: string, title: string) => {
     try {
-      createTask(columnId, title);
-      fetchProject();
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, columnId }),
+      });
+      if (!res.ok) throw new Error("Failed to create task");
+      toast.success("Task created");
+      await fetchProject();
     } catch (error) {
       console.error("Failed to add task:", error);
     }
@@ -148,11 +136,76 @@ export default function ProjectPage() {
       return;
     }
 
-    // Use demo store to move task
-    moveTask(draggableId, destination.droppableId, destination.index);
-    
-    // Refresh the project data
-    fetchProject();
+    // Optimistic UI update
+    const newColumns = project.columns.map((col) => {
+      if (col.id === source.droppableId && col.id === destination.droppableId) {
+        const tasks = [...col.tasks];
+        const [removed] = tasks.splice(source.index, 1);
+        tasks.splice(destination.index, 0, removed);
+        return { ...col, tasks: tasks.map((t, i) => ({ ...t, position: i })) };
+      }
+      if (col.id === source.droppableId) {
+        const tasks = [...col.tasks];
+        const [removed] = tasks.splice(source.index, 1);
+        return { ...col, tasks: tasks.map((t, i) => ({ ...t, position: i })) };
+      }
+      if (col.id === destination.droppableId) {
+        const tasks = [...col.tasks];
+        const movedTask = project.columns
+          .find((c) => c.id === source.droppableId)
+          ?.tasks.find((t) => t.id === draggableId);
+        if (!movedTask) return col;
+        tasks.splice(destination.index, 0, {
+          ...movedTask,
+          columnId: col.id,
+          position: destination.index,
+        });
+        return {
+          ...col,
+          tasks: tasks.map((t, i) => ({ ...t, position: i, columnId: col.id })),
+        };
+      }
+      return col;
+    });
+
+    setProject({ ...project, columns: newColumns });
+
+    // Build tasksToUpdate for API
+    const tasksToUpdate: { id: string; columnId: string; position: number }[] =
+      [];
+    const sourceColumn = newColumns.find((c) => c.id === source.droppableId);
+    const destColumn = newColumns.find((c) => c.id === destination.droppableId);
+
+    if (sourceColumn) {
+      sourceColumn.tasks.forEach((t, i) => {
+        tasksToUpdate.push({
+          id: t.id,
+          columnId: sourceColumn.id,
+          position: i,
+        });
+      });
+    }
+    if (destColumn && destColumn.id !== sourceColumn?.id) {
+      destColumn.tasks.forEach((t, i) => {
+        tasksToUpdate.push({
+          id: t.id,
+          columnId: destColumn.id,
+          position: i,
+        });
+      });
+    }
+
+    fetch("/api/tasks", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tasks: tasksToUpdate }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to move task");
+      })
+      .catch(() => {
+        fetchProject(); // Revert on error
+      });
   };
 
   const getTypeLabel = (type: string) => {

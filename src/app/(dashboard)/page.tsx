@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getProjects, DemoProject } from "@/lib/demo-store";
 
 interface Project {
   id: string;
@@ -26,17 +25,28 @@ export default function DashboardPage() {
     fetchProjects();
   }, []);
 
-  const fetchProjects = () => {
+  const fetchProjects = async () => {
     try {
-      const allProjects = getProjects();
-      const mapped = allProjects.map((p: DemoProject) => ({
+      const res = await fetch("/api/projects");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch projects");
+      const raw = data.projects ?? data;
+      const mapped: Project[] = raw.map((p: {
+        id: string;
+        name: string;
+        description: string | null;
+        type: string;
+        createdAt: string;
+        owner: { name: string };
+        columns: { _count: { tasks: number } }[];
+      }) => ({
         id: p.id,
         name: p.name,
         description: p.description,
         type: p.type,
         createdAt: p.createdAt,
         owner: p.owner,
-        taskCount: p.columns.reduce((sum, col) => sum + col.tasks.length, 0),
+        taskCount: (p.columns ?? []).reduce((sum, col) => sum + col._count.tasks, 0),
       }));
       setProjects(mapped);
     } catch (error) {

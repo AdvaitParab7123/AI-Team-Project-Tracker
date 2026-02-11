@@ -22,8 +22,10 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  projects      Project[] @relation("ProjectOwner")
-  assignedTasks Task[]    @relation("TaskAssignee")
+  projects      Project[]      @relation("ProjectOwner")
+  assignedTasks Task[]         @relation("TaskAssignee")
+  taskAssignments TaskAssignee[] @relation("TaskAssignments")
+  watchedTasks  TaskWatcher[]  @relation("WatchedTasks")
   comments      Comment[]
   activities    Activity[]
 }
@@ -72,10 +74,12 @@ model Task {
   column      Column       @relation(fields: [columnId], references: [id], onDelete: Cascade)
   assigneeId  String?
   assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  checklists  Checklist[]
-  comments    Comment[]
-  attachments Attachment[]
-  taskLabels  TaskLabel[]
+  checklists     Checklist[]
+  comments       Comment[]
+  attachments    Attachment[]
+  taskLabels     TaskLabel[]
+  taskAssignees  TaskAssignee[]
+  taskWatchers   TaskWatcher[]
 }
 
 model Checklist {
@@ -165,4 +169,24 @@ model Activity {
   // Relations
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model TaskAssignee {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("TaskAssignments", fields: [userId], references: [id])
+
+  @@unique([taskId, userId])
+}
+
+model TaskWatcher {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("WatchedTasks", fields: [userId], references: [id])
+
+  @@unique([taskId, userId])
 }

@@ -6,13 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { 
-  addChecklist, 
-  deleteChecklist, 
-  addChecklistItem, 
-  updateChecklistItem, 
-  deleteChecklistItem 
-} from "@/lib/demo-store";
+import { toast } from "sonner";
 
 interface ChecklistItem {
   id: string;
@@ -40,56 +34,83 @@ export function Checklist({ taskId, checklists, onUpdate }: ChecklistProps) {
   const [addingItemTo, setAddingItemTo] = useState<string | null>(null);
   const [newItemContent, setNewItemContent] = useState("");
 
-  const handleAddChecklist = () => {
+  const handleAddChecklist = async () => {
     if (!newChecklistTitle.trim()) return;
 
     try {
-      addChecklist(taskId, newChecklistTitle);
-      setNewChecklistTitle("");
-      setIsAddingChecklist(false);
-      onUpdate();
+      const res = await fetch("/api/checklists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newChecklistTitle, taskId }),
+      });
+      if (res.ok) {
+        setNewChecklistTitle("");
+        setIsAddingChecklist(false);
+        onUpdate();
+        toast.success("Checklist added");
+      }
     } catch (error) {
       console.error("Failed to add checklist:", error);
     }
   };
 
-  const handleDeleteChecklist = (checklistId: string) => {
+  const handleDeleteChecklist = async (checklistId: string) => {
     if (!confirm("Delete this checklist?")) return;
 
     try {
-      deleteChecklist(checklistId);
-      onUpdate();
+      const res = await fetch(`/api/checklists/${checklistId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        onUpdate();
+      }
     } catch (error) {
       console.error("Failed to delete checklist:", error);
     }
   };
 
-  const handleAddItem = (checklistId: string) => {
+  const handleAddItem = async (checklistId: string) => {
     if (!newItemContent.trim()) return;
 
     try {
-      addChecklistItem(checklistId, newItemContent);
-      setNewItemContent("");
-      setAddingItemTo(null);
-      onUpdate();
+      const res = await fetch("/api/checklist-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newItemContent, checklistId }),
+      });
+      if (res.ok) {
+        setNewItemContent("");
+        setAddingItemTo(null);
+        onUpdate();
+      }
     } catch (error) {
       console.error("Failed to add item:", error);
     }
   };
 
-  const handleToggleItem = (itemId: string, completed: boolean) => {
+  const handleToggleItem = async (itemId: string, completed: boolean) => {
     try {
-      updateChecklistItem(itemId, { completed });
-      onUpdate();
+      const res = await fetch(`/api/checklist-items/${itemId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed }),
+      });
+      if (res.ok) {
+        onUpdate();
+      }
     } catch (error) {
       console.error("Failed to toggle item:", error);
     }
   };
 
-  const handleDeleteItem = (itemId: string) => {
+  const handleDeleteItem = async (itemId: string) => {
     try {
-      deleteChecklistItem(itemId);
-      onUpdate();
+      const res = await fetch(`/api/checklist-items/${itemId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        onUpdate();
+      }
     } catch (error) {
       console.error("Failed to delete item:", error);
     }

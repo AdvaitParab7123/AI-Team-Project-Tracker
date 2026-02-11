@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Checklist } from "./checklist";
 import { Comments } from "./comments";
-import { getTask, updateTask, deleteTask, getUsers, DEMO_USER } from "@/lib/demo-store";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -78,6 +78,8 @@ interface TaskData {
   checklists: ChecklistData[];
   comments: Comment[];
   taskLabels: { label: LabelData }[];
+  attachments: unknown[];
+  column: { project: { labels: LabelData[] } };
 }
 
 interface TaskModalProps {
@@ -100,17 +102,20 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
 
-  const fetchTask = useCallback(() => {
+  const fetchTask = useCallback(async () => {
     try {
-      const taskData = getTask(taskId);
-      if (taskData) {
-        setTask(taskData as TaskData);
-        setTitle(taskData.title);
-        setDescription(taskData.description || "");
-        setPriority(taskData.priority);
-        setDueDate(taskData.dueDate ? new Date(taskData.dueDate) : undefined);
-        setAssigneeId(taskData.assignee?.id || null);
+      const res = await fetch(`/api/tasks/${taskId}`);
+      if (!res.ok) {
+        setTask(null);
+        return;
       }
+      const taskData = await res.json();
+      setTask(taskData as TaskData);
+      setTitle(taskData.title);
+      setDescription(taskData.description || "");
+      setPriority(taskData.priority);
+      setDueDate(taskData.dueDate ? new Date(taskData.dueDate) : undefined);
+      setAssigneeId(taskData.assignee?.id || null);
     } catch (error) {
       console.error("Failed to fetch task:", error);
     } finally {
@@ -118,9 +123,16 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
     }
   }, [taskId]);
 
-  const fetchUsers = () => {
-    const allUsers = getUsers();
-    setUsers(allUsers);
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch("/api/users");
+      if (res.ok) {
+        const allUsers = await res.json();
+        setUsers(allUsers);
+      }
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    }
   };
 
   useEffect(() => {
@@ -128,20 +140,25 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
     fetchUsers();
   }, [fetchTask]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
     try {
-      const assignee = assigneeId ? getUsers().find(u => u.id === assigneeId) : null;
-      updateTask(taskId, {
-        title,
-        description: description || null,
-        priority,
-        dueDate: dueDate?.toISOString() || null,
-        assigneeId,
-        assignee: assignee || null,
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description: description || null,
+          priority,
+          dueDate: dueDate?.toISOString() || null,
+          assigneeId,
+        }),
       });
-      fetchTask();
-      onUpdate();
+      if (res.ok) {
+        await fetchTask();
+        onUpdate();
+        toast.success("Task updated");
+      }
     } catch (error) {
       console.error("Failed to save task:", error);
     } finally {
@@ -149,13 +166,16 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this task?")) return;
 
     try {
-      deleteTask(taskId);
-      onClose();
-      onUpdate();
+      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+      if (res.ok) {
+        onClose();
+        onUpdate();
+        toast.success("Task deleted");
+      }
     } catch (error) {
       console.error("Failed to delete task:", error);
     }

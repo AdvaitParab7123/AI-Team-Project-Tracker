@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +48,7 @@ export default function LoginPage() {
             Project Tracker
           </CardTitle>
           <CardDescription className="text-center">
-            Sign in to your account
+            AI Adoption Team - Netcore Cloud
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -64,7 +63,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="you@netcorecloud.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -82,16 +81,10 @@ export default function LoginPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
+          <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
-            <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-              Don&apos;t have an account?{" "}
-              <Link href="/register" className="text-blue-600 hover:underline">
-                Register
-              </Link>
-            </p>
           </CardFooter>
         </form>
       </Card>

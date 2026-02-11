@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
-import { addComment, deleteComment, DEMO_USER } from "@/lib/demo-store";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -28,6 +29,7 @@ interface CommentsProps {
 }
 
 export function Comments({ taskId, comments, onUpdate }: CommentsProps) {
+  const { data: session } = useSession();
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -40,14 +42,21 @@ export function Comments({ taskId, comments, onUpdate }: CommentsProps) {
       .slice(0, 2);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!newComment.trim()) return;
 
     setSubmitting(true);
     try {
-      addComment(taskId, newComment);
-      setNewComment("");
-      onUpdate();
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newComment, taskId }),
+      });
+      if (res.ok) {
+        setNewComment("");
+        onUpdate();
+        toast.success("Comment added");
+      }
     } catch (error) {
       console.error("Failed to add comment:", error);
     } finally {
@@ -55,12 +64,16 @@ export function Comments({ taskId, comments, onUpdate }: CommentsProps) {
     }
   };
 
-  const handleDelete = (commentId: string) => {
+  const handleDelete = async (commentId: string) => {
     if (!confirm("Delete this comment?")) return;
 
     try {
-      deleteComment(commentId);
-      onUpdate();
+      const res = await fetch(`/api/comments/${commentId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        onUpdate();
+      }
     } catch (error) {
       console.error("Failed to delete comment:", error);
     }
@@ -74,7 +87,7 @@ export function Comments({ taskId, comments, onUpdate }: CommentsProps) {
       <div className="flex gap-3">
         <Avatar className="h-8 w-8 flex-shrink-0">
           <AvatarFallback className="text-xs">
-            {getInitials(DEMO_USER.name)}
+            {getInitials(session?.user?.name || "U")}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-2">

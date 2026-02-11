@@ -33,7 +33,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createProject, DEMO_USER, resetDemoData } from "@/lib/demo-store";
+import { useSession, signOut } from "next-auth/react";
+import { toast } from "sonner";
 
 interface Project {
   id: string;
@@ -48,6 +49,7 @@ interface SidebarProps {
 
 export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     name: "",
@@ -61,21 +63,27 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
     setCreating(true);
 
     try {
-      createProject(newProject.name, newProject.description || null, newProject.type);
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProject.name,
+          description: newProject.description || null,
+          type: newProject.type,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create project");
+      }
       setNewProject({ name: "", description: "", type: "general" });
       setIsCreateOpen(false);
       onProjectCreated?.();
+      toast("Project created");
     } catch (error) {
       console.error("Failed to create project:", error);
     } finally {
       setCreating(false);
     }
-  };
-
-  const handleResetDemo = () => {
-    resetDemoData();
-    onProjectCreated?.();
-    window.location.reload();
   };
 
   const getInitials = (name: string) => {
@@ -275,26 +283,25 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
             >
               <Avatar className="h-8 w-8 mr-2">
                 <AvatarFallback className="bg-gray-700 text-white text-xs">
-                  {getInitials(DEMO_USER.name)}
+                  {session?.user?.name
+                    ? getInitials(session.user.name)
+                    : "?"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium truncate">
-                  {DEMO_USER.name}
+                  {session?.user?.name ?? "User"}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
-                  {DEMO_USER.email}
+                  {session?.user?.email ?? ""}
                 </p>
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem disabled>
-              Role: {DEMO_USER.role}
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleResetDemo}>
-              Reset Demo Data
+            <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
+              Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
