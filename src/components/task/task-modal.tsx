@@ -77,6 +77,11 @@ interface TimeEntryData {
   user: User;
 }
 
+interface ColumnInfo {
+  id: string;
+  name: string;
+}
+
 interface TaskData {
   id: string;
   title: string;
@@ -84,23 +89,25 @@ interface TaskData {
   priority: string;
   dueDate: string | null;
   estimatedHours: number | null;
+  columnId: string;
   assignee: User | null;
   checklists: ChecklistData[];
   comments: Comment[];
   taskLabels: { label: LabelData }[];
   attachments: unknown[];
   timeEntries: TimeEntryData[];
-  column: { project: { labels: LabelData[] } };
+  column: { id: string; name: string; project: { labels: LabelData[] } };
 }
 
 interface TaskModalProps {
   taskId: string;
   projectLabels: LabelData[];
+  columns?: ColumnInfo[];
   onClose: () => void;
   onUpdate: () => void;
 }
 
-export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
+export function TaskModal({ taskId, columns, onClose, onUpdate }: TaskModalProps) {
   const [task, setTask] = useState<TaskData | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,6 +120,7 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [estimatedHours, setEstimatedHours] = useState<string>("");
+  const [columnId, setColumnId] = useState<string>("");
 
   const fetchTask = useCallback(async () => {
     try {
@@ -129,6 +137,7 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
       setDueDate(taskData.dueDate ? new Date(taskData.dueDate) : undefined);
       setAssigneeId(taskData.assignee?.id || null);
       setEstimatedHours(taskData.estimatedHours ? String(taskData.estimatedHours) : "");
+      setColumnId(taskData.column?.id || taskData.columnId || "");
     } catch (error) {
       console.error("Failed to fetch task:", error);
     } finally {
@@ -259,6 +268,47 @@ export function TaskModal({ taskId, onClose, onUpdate }: TaskModalProps) {
                       {label.name}
                     </Badge>
                   ))}
+                </div>
+              )}
+
+              {/* Status / Column */}
+              {columns && columns.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500" title="Move this task to a different column/status">Status</Label>
+                  <Select
+                    value={columnId}
+                    onValueChange={async (newColumnId) => {
+                      setColumnId(newColumnId);
+                      try {
+                        const res = await fetch(`/api/tasks/${taskId}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ columnId: newColumnId }),
+                        });
+                        if (res.ok) {
+                          const colName = columns.find(c => c.id === newColumnId)?.name;
+                          toast.success(`Moved to ${colName}`);
+                          onUpdate();
+                        }
+                      } catch (error) {
+                        console.error("Failed to move task:", error);
+                        toast.error("Failed to move task");
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue>
+                        {columns.find(c => c.id === columnId)?.name || "Select status"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {columns.map((col) => (
+                        <SelectItem key={col.id} value={col.id}>
+                          {col.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 

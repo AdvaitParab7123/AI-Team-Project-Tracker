@@ -151,6 +151,23 @@ export default function ProjectPage() {
     setQuickAddOpen(false);
   };
 
+  const handleTaskStatusChange = async (taskId: string, newColumnId: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ columnId: newColumnId }),
+      });
+      if (!res.ok) throw new Error("Failed to move task");
+      const colName = project?.columns.find(c => c.id === newColumnId)?.name;
+      toast.success(`Moved to ${colName}`);
+      await fetchProject();
+    } catch (error) {
+      console.error("Failed to move task:", error);
+      toast.error("Failed to move task");
+    }
+  };
+
   const handleTaskMove = (result: DropResult) => {
     if (!result.destination || !project) return;
 
@@ -443,6 +460,7 @@ export default function ProjectPage() {
             onTaskClick={setSelectedTaskId}
             onAddTask={handleAddTask}
             onTaskMove={handleTaskMove}
+            onTaskStatusChange={handleTaskStatusChange}
           />
         ) : (
           <ListView
@@ -457,6 +475,7 @@ export default function ProjectPage() {
         <TaskModal
           taskId={selectedTaskId}
           projectLabels={project.labels}
+          columns={project.columns.map(c => ({ id: c.id, name: c.name }))}
           onClose={() => setSelectedTaskId(null)}
           onUpdate={fetchProject}
         />

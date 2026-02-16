@@ -6,6 +6,13 @@ import { TaskCard } from "./task-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
@@ -56,6 +63,7 @@ interface KanbanBoardProps {
   onTaskClick: (taskId: string) => void;
   onAddTask: (columnId: string, title: string) => void;
   onTaskMove: (result: DropResult) => void;
+  onTaskStatusChange?: (taskId: string, newColumnId: string) => void;
 }
 
 const getColumnColor = (name: string) => {
@@ -74,6 +82,7 @@ export function KanbanBoard({
   onTaskClick,
   onAddTask,
   onTaskMove,
+  onTaskStatusChange,
 }: KanbanBoardProps) {
   const [expandedColumnId, setExpandedColumnId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -279,15 +288,47 @@ export function KanbanBoard({
                         className="space-y-2 min-h-[200px]"
                       >
                         {expandedColumn.tasks.map((task, index) => (
-                          <TaskCard
-                            key={task.id}
-                            task={task}
-                            index={index}
-                            onClick={() => {
-                              closeExpanded();
-                              onTaskClick(task.id);
-                            }}
-                          />
+                          <div key={task.id} className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <TaskCard
+                                task={task}
+                                index={index}
+                                onClick={() => {
+                                  closeExpanded();
+                                  onTaskClick(task.id);
+                                }}
+                              />
+                            </div>
+                            {onTaskStatusChange && (
+                              <Select
+                                value={expandedColumnId || ""}
+                                onValueChange={(newColId) => {
+                                  if (newColId !== expandedColumnId) {
+                                    onTaskStatusChange(task.id, newColId);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger
+                                  className="w-[120px] h-8 text-xs shrink-0 mt-1"
+                                  title="Move this task to another column"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <SelectValue placeholder="Move to..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {sortedColumns.map((col) => (
+                                    <SelectItem
+                                      key={col.id}
+                                      value={col.id}
+                                      disabled={col.id === expandedColumnId}
+                                    >
+                                      {col.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
                         ))}
                         {provided.placeholder}
                         {expandedColumn.tasks.length === 0 && (
