@@ -9,6 +9,7 @@ interface Project {
   id: string;
   name: string;
   type: string;
+  description?: string | null;
 }
 
 export default function DashboardLayout({

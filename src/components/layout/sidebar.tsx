@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,13 +14,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CreateProjectDialog } from "@/components/shared/create-project-dialog";
+import { EditProjectDialog } from "@/components/shared/edit-project-dialog";
 import { useSession, signOut } from "next-auth/react";
+import { toast } from "sonner";
 
 interface Project {
   id: string;
   name: string;
   type: string;
+  description?: string | null;
 }
 
 interface SidebarProps {
@@ -30,8 +43,12 @@ interface SidebarProps {
 
 export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editProject, setEditProject] = useState<Project | null>(null);
+  const [deleteProject, setDeleteProject] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const getInitials = (name: string) => {
     return name
@@ -52,6 +69,29 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
         return "bg-purple-500";
       default:
         return "bg-gray-500";
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!deleteProject) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/projects/${deleteProject.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete project");
+      toast.success(`"${deleteProject.name}" deleted`);
+      // If user is viewing the deleted project, navigate home
+      if (pathname === `/project/${deleteProject.id}`) {
+        router.push("/");
+      }
+      onProjectCreated?.();
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+      toast.error("Failed to delete project");
+    } finally {
+      setDeleting(false);
+      setDeleteProject(null);
     }
   };
 
@@ -129,30 +169,137 @@ export function Sidebar({ projects, onProjectCreated }: SidebarProps) {
               onProjectCreated={onProjectCreated}
             />
 
+            <EditProjectDialog
+              project={editProject}
+              open={!!editProject}
+              onOpenChange={(open) => {
+                if (!open) setEditProject(null);
+              }}
+              onProjectUpdated={onProjectCreated}
+            />
+
+            {/* Delete Confirmation */}
+            <AlertDialog
+              open={!!deleteProject}
+              onOpenChange={(open) => {
+                if (!open) setDeleteProject(null);
+              }}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete &quot;{deleteProject?.name}&quot;?
+                    This will permanently remove all tasks, columns, comments,
+                    and data in this project. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteProject}
+                    disabled={deleting}
+                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                  >
+                    {deleting ? "Deleting..." : "Delete Project"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
             <div className="space-y-1">
               {projects.map((project) => (
-                <Link
-                  key={project.id}
-                  href={`/project/${project.id}`}
-                  title={`Open ${project.name}`}
-                >
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800",
-                      pathname === `/project/${project.id}` &&
-                        "bg-gray-800 text-white"
-                    )}
+                <div key={project.id} className="group relative flex items-center">
+                  <Link
+                    href={`/project/${project.id}`}
+                    title={`Open ${project.name}`}
+                    className="flex-1 min-w-0"
                   >
-                    <span
+                    <Button
+                      variant="ghost"
                       className={cn(
-                        "w-2 h-2 rounded-full mr-2",
-                        getTypeColor(project.type)
+                        "w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800 pr-8",
+                        pathname === `/project/${project.id}` &&
+                          "bg-gray-800 text-white"
                       )}
-                    />
-                    <span className="truncate">{project.name}</span>
-                  </Button>
-                </Link>
+                    >
+                      <span
+                        className={cn(
+                          "w-2 h-2 rounded-full mr-2 shrink-0",
+                          getTypeColor(project.type)
+                        )}
+                      />
+                      <span className="truncate">{project.name}</span>
+                    </Button>
+                  </Link>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 h-6 w-6 p-0 text-gray-500 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-gray-700 transition-opacity"
+                        title="Project options"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                          />
+                        </svg>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem
+                        onClick={() => setEditProject(project)}
+                      >
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setDeleteProject(project)}
+                        className="text-red-400 focus:text-red-400"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               ))}
               {projects.length === 0 && (
                 <p className="text-sm text-gray-500 px-2 py-1">
